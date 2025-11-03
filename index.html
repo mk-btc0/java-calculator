@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Калькулятор — красивый на JavaScript</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#0f1724;
+      --accent:#60a5fa;
+      --accent-2:#7dd3fc;
+      --text:#e6eef8;
+      --muted:#94a3b8;
+      --glass: rgba(255,255,255,0.03);
+      --radius:12px;
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: linear-gradient(180deg,#041025 0%, #071428 100%);
+      color:var(--text);
+      padding:24px;
+    }
+
+    .calculator{
+      width:100%;
+      max-width:420px;
+      border-radius:var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.03));
+      padding:18px;
+      box-shadow: 0 10px 40px rgba(2,6,23,0.6);
+      display:grid;
+      grid-template-rows: auto auto 1fr;
+      gap:12px;
+    }
+
+    .screen{
+      background:var(--panel);
+      padding:14px;
+      border-radius:10px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-height:86px;
+    }
+    .expr{
+      font-size:14px;
+      color:var(--muted);
+      min-height:18px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .result{
+      font-size:28px;
+      font-weight:600;
+      color:var(--accent-2);
+      word-break:break-all;
+    }
+
+    .controls{
+      display:flex;
+      gap:8px;
+      justify-content:space-between;
+      align-items:center;
+    }
+    .btn{
+      border:0;
+      background:transparent;
+      color:var(--text);
+      padding:8px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .btn.secondary{
+      background:var(--glass);
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:10px;
+    }
+
+    .key{
+      background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.02));
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.03);
+      padding:16px;
+      font-size:18px;
+      text-align:center;
+      cursor:pointer;
+      user-select:none;
+      transition: transform .06s, box-shadow .06s;
+    }
+    .key:active{ transform: translateY(1px); }
+    .key.op{ color:var(--accent); font-weight:700; }
+    .key.wide{ grid-column: span 2; }
+    .key.equals{
+      background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%);
+      color:#05203a;
+      font-weight:800;
+    }
+
+    .history{
+      margin-top:8px;
+      font-size:13px;
+      color:var(--muted);
+      max-height:100px;
+      overflow:auto;
+      padding:8px;
+      border-radius:8px;
+      background: rgba(255,255,255,0.01);
+      border:1px solid rgba(255,255,255,0.02);
+    }
+    .history-item{ padding:6px 8px; border-radius:6px; margin-bottom:6px; background: rgba(255,255,255,0.01); display:flex; justify-content:space-between; gap:8px; }
+    .muted{ color:var(--muted); font-size:13px; }
+
+    @media (max-width:460px){
+      .result{ font-size:22px; }
+      .key{ padding:12px; font-size:16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="calculator" role="application" aria-label="Калькулятор">
+    <div class="screen" aria-live="polite">
+      <div class="expr" id="expr" aria-hidden="false"> </div>
+      <div class="result" id="result">0</div>
+      <div class="history" id="history" aria-label="История вычислений"></div>
+    </div>
+
+    <div class="controls">
+      <div>
+        <button class="btn secondary" id="clearAll">C</button>
+        <button class="btn secondary" id="back">⌫</button>
+      </div>
+      <div>
+        <button class="btn" id="toggleSign">±</button>
+        <button class="btn" id="percent">%</button>
+      </div>
+    </div>
+
+    <div class="grid" role="grid" aria-label="Кнопки калькулятора">
+      <!-- row1 -->
+      <div class="key" data-key="7">7</div>
+      <div class="key" data-key="8">8</div>
+      <div class="key" data-key="9">9</div>
+      <div class="key op" data-key="/">÷</div>
+
+      <!-- row2 -->
+      <div class="key" data-key="4">4</div>
+      <div class="key" data-key="5">5</div>
+      <div class="key" data-key="6">6</div>
+      <div class="key op" data-key="*">×</div>
+
+      <!-- row3 -->
+      <div class="key" data-key="1">1</div>
+      <div class="key" data-key="2">2</div>
+      <div class="key" data-key="3">3</div>
+      <div class="key op" data-key="-">−</div>
+
+      <!-- row4 -->
+      <div class="key wide" data-key="0">0</div>
+      <div class="key" data-key=".">.</div>
+      <div class="key op" data-key="+">+</div>
+
+      <!-- row5 -->
+      <div class="key" data-key="(">(</div>
+      <div class="key" data-key=")">)</div>
+      <div class="key" data-key="sqrt">√</div>
+      <div class="key equals" data-key="=">=</div>
+    </div>
+  </div>
+
+  <script>
+    // Калькулятор: простая, безопасная оценка математических выражений
+    (function(){
+      const exprEl = document.getElementById('expr');
+      const resultEl = document.getElementById('result');
+      const historyEl = document.getElementById('history');
+
+      let expression = '';
+      let lastResult = null;
+
+      // Разрешённые символы для вычисления (безопасность: избегаем выполнения произвольного JS)
+      const ALLOWED = /^[0-9+\-*/().% ]+$/;
+
+      function render(){
+        exprEl.textContent = expression || ' ';
+        resultEl.textContent = lastResult === null ? '0' : String(lastResult);
+      }
+
+      function pushChar(ch){
+        // предотвращаем подряд идущие операторы (упрощённо)
+        if(ch === '.' ){
+          // не даём две точки подряд в одном числе (простая проверка)
+          const tokens = expression.split(/[\+\-\*\/\%\(\)]/);
+          const last = tokens[tokens.length-1];
+          if(last.includes('.')) return;
+        }
+        expression += ch;
+        render();
+      }
+
+      function clearAll(){
+        expression = '';
+        lastResult = null;
+        render();
+      }
+
+      function backspace(){
+        if(expression.length>0) expression = expression.slice(0, -1);
+        render();
+      }
+
+      function addHistory(expr, res){
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `<div class="muted">${expr}</div><div style="font-weight:700">${res}</div>`;
+        historyEl.prepend(item);
+        // keep only last 12
+        while(historyEl.childElementCount > 12) historyEl.removeChild(historyEl.lastChild);
+      }
+
+      function evaluateExpression(){
+        if(!expression) return;
+        // Небольшая подготовка: заменяем символы '×' '÷' если они были
+        let safeExpr = expression.replace(/÷/g, '/').replace(/×/g, '*').replace(/−/g, '-');
+
+        // поддержка процента: преобразовываем "a%"=> "(a/100)"
+        // регулярка найдёт числа с % и заменит их на (num/100)
+        safeExpr = safeExpr.replace(/(\d+(\.\d+)?)%/g, '($1/100)');
+
+        // проверка на разрешённые символы
+        if(!ALLOWED.test(safeExpr)){
+          alert('Выражение содержит недопустимые символы.');
+          return;
+        }
+
+        try{
+          // безопасная оценка: используем Function но после фильтрации ALLOWED — риск минимален
+          // Также ограничим длину выражения
+          if(safeExpr.length > 200) { alert('Слишком длинное выражение'); return; }
+          // eslint-disable-next-line no-new-func
+          const fn = new Function('return (' + safeExpr + ')');
+          let val = fn();
+          if(typeof val !== 'number' || !isFinite(val)) throw new Error('Невычислимое значение');
+          // округлим до 12 знаков после запятой чтобы избежать длинных дробей
+          val = Math.round((val + Number.EPSILON) * 1e12) / 1e12;
+          lastResult = val;
+          addHistory(expression, val);
+          expression = String(val); // позволим продолжать вычисления с результата
+          render();
+        }catch(e){
+          alert('Ошибка при вычислении: ' + (e.message || e));
+        }
+      }
+
+      // дополнительные операции
+      function toggleSign(){
+        if(!expression) return;
+        // попытаемся инвертировать последнее число в выражении
+        const parts = expression.split(/([+\-*/%()])/);
+        for(let i = parts.length-1; i>=0; i--){
+          if(parts[i].trim() === '') continue;
+          if(/^[0-9.]+$/.test(parts[i])){
+            parts[i] = String(-Number(parts[i]));
+            expression = parts.join('');
+            render();
+            return;
+          }
+        }
+      }
+
+      function percentOp(){
+        // добавим '%' к выражению (обработается в evaluateExpression)
+        expression += '%';
+        render();
+      }
+
+      function sqrtOp(){
+        // заменим выражение на Math.sqrt(...) безопасно
+        if(!expression) return;
+        // ограничение: текущая реализация возьмёт результат и применит sqrt
+        evaluateExpression();
+        if(lastResult !== null){
+          if(lastResult < 0) { alert('Нельзя извлечь корень из отрицательного числа'); return; }
+          lastResult = Math.round(Math.sqrt(lastResult) * 1e12) / 1e12;
+          addHistory('√(prev)', lastResult);
+          expression = String(lastResult);
+          render();
+        }
+      }
+
+      // обработка нажатий кнопок
+      document.querySelectorAll('.key').forEach(btn=>{
+        btn.addEventListener('click', ()=> {
+          const key = btn.dataset.key;
+          if(key === '=') evaluateExpression();
+          else if(key === 'sqrt') sqrtOp();
+          else pushChar(key);
+        });
+      });
+
+      document.getElementById('clearAll').addEventListener('click', clearAll);
+      document.getElementById('back').addEventListener('click', backspace);
+      document.getElementById('toggleSign').addEventListener('click', toggleSign);
+      document.getElementById('percent').addEventListener('click', percentOp);
+
+      // поддержка клавиатуры
+      window.addEventListener('keydown', (ev)=>{
+        // цифры и базовые операторы
+        if(ev.key.match(/[0-9]/)) { pushChar(ev.key); ev.preventDefault(); return; }
+        if(['+','-','*','/','(',')','.','%'].includes(ev.key)){ pushChar(ev.key); ev.preventDefault(); return; }
+        if(ev.key === 'Enter' || ev.key === '='){ evaluateExpression(); ev.preventDefault(); return; }
+        if(ev.key === 'Backspace'){ backspace(); ev.preventDefault(); return; }
+        if(ev.key === 'Escape'){ clearAll(); ev.preventDefault(); return; }
+      });
+
+      // init
+      clearAll();
+    })();
+  </script>
+</body>
+</html>
